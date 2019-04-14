@@ -54,9 +54,7 @@ class App extends Component {
         const email = urlParams.get('email')
         const password = urlParams.get('password')
 
-        if (!email) return this.setState({
-            appState: 'new_user'
-        })
+        if (!email || !password) return window.location.href = 'https://scs-login.ngxson.com'
 
         this.setState({
             appState: 'loading',
