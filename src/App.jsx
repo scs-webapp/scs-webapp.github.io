@@ -1,188 +1,208 @@
-import React, {Component} from 'react'
-import AppContext from './AppContext'
-import PropTypes from 'prop-types'
-import {withStyles} from '@material-ui/core/styles'
+import React, { Component } from 'react'
+import AppContext from '../../AppContext'
 import * as firebase from 'firebase'
-import Register from './containers/register/Register'
-import Init from './containers/init/Init'
-import Supporter from './layouts/supporter/Supporter'
-import Admin from './layouts/admin/Admin'
-import NewUser from './containers/new-user/NewUser'
+import AppBar from '@material-ui/core/AppBar'
+import Toolbar from '@material-ui/core/Toolbar'
+import Typography from '@material-ui/core/Typography'
+import Button from '@material-ui/core/Button'
+import NewSchool from './NewSchool'
+import ListSupporters from './ListSupporters'
+import Messages from './Messages'
+import TextField from '@material-ui/core/TextField'
+import EditSchool from './EditSchool'
 
-const styles = {
-    root: {
-        flexGrow: 1,
-    },
-    grow: {
-        flexGrow: 1,
-    },
-    menuButton: {
-        marginLeft: -12,
-        marginRight: 20,
-    },
+function xoa_dau(str) {
+    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+    str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+    str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+    str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+    str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+    str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+    str = str.replace(/đ/g, "d");
+    str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+    str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+    str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+    str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+    str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+    str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+    str = str.replace(/Đ/g, "D");
+    return str;
 }
 
-const DB_PREFIX = 'pagetuyensinh'
-
-const config = {
-    apiKey: 'AIzaSyBxBvZZPxo06HQWHWudRGytuJoSNw5LNX8',
-    authDomain: 'localhost',
-    databaseURL: 'https://page-tuyen-sinh.firebaseio.com',
-    projectId: 'page-tuyen-sinh',
-    storageBucket: 'page-tuyen-sinh.appspot.com',
-    messagingSenderId: '497060879105'
-}
-
-class App extends Component {
+class Admin extends Component {
     constructor(props) {
         super(props)
-        if (!firebase.apps.length) {
-            firebase.initializeApp(config);
-        }
+
+        this.schoolRef = firebase.database().ref(this.props.DB_PREFIX + '/groups')
+        this.schoolRef.on('child_added', this.updateSchool)
+        this.schoolRef.on('child_changed', this.updateSchool)
         this.state = {
-            appState: null,
-            DB_PREFIX,
+            school: {},
+            addNewSchool: false,
+            search: '',
         }
     }
 
-    componentWillMount() {
-        this._doLogin()
+    updateSchool = (snap) => {
+        this.setState(({ school }) => ({
+            school: {
+                ...school,
+                [snap.key]: snap.val(),
+            }
+        }))
     }
 
-    _doLogin = () => {
-        const urlParams = new URLSearchParams(window.location.search)
-        const email = urlParams.get('email')
-        const password = urlParams.get('password')
-
-        if (!email || !password) return window.location.href = 'https://scs-login.ngxson.com'
-
+    clickSchool = (s) => () => {
         this.setState({
-            appState: 'loading',
-            email,
-            password,
-        })
-
-        firebase.auth().signInWithEmailAndPassword(
-            email, password
-        ).then((data) => {
-            this.setState({
-                uId: data.$uid
-            })
-            this._getUserInfo(data.user.uid)
-        }).catch((error) => {
-            if (error.message === 'The password is invalid or the user does not have a password.') return alert('Sai mật khẩu')
-            this._doRegister(email, password)
+            selectedSchool: s,
+            messages: null,
         })
     }
 
-    _getUserInfo = (uid) => {
-        firebase.database().ref(DB_PREFIX + '/users/' + uid).once('value')
-            .then(snap => {
-                firebase.database().ref(DB_PREFIX + '/groups').once('value').then(gr => {
-                    var groups = gr.val()
-                    console.log(groups)
-                    var userData = snap.val() || {}
-                    userData.$uid = uid
-                    if (!userData.role) {
-                        this.setState({
-                            appState: 'register',
-                            uid,
-                            groups,
-                        })
-                    } else {
-                        const {role} = userData
-                        this.setState({
-                            appState: role === 1000 ? 'admin' : 'supporter',
-                            user: userData,
-                        })
-                    }
-                })
-            })
-            .catch(err => {
-                console.log(err)
-            })
-    }
-
-    _doRegister = (email, password) => {
+    clickAllMessages = (s) => () => {
         this.setState({
-            appState: 'init',
-        })
-
-        return firebase.auth().createUserWithEmailAndPassword(
-            email, password
-        ).then(() => {
-            this._doLogin()
-        }).catch((e) => {
-            alert('Có lỗi xảy ra, vui lòng báo lại với admin')
+            selectedSchool: null,
+            messages: s,
         })
     }
 
-    _register = (user) => {
-        const userId = this.state.uid
-        return firebase.database().ref(DB_PREFIX + '/users/' + userId).set(
-            this.removeTempKeys(user)
-            , (err) => {
-                if (err) {
-                    console.log(err)
-                    alert('Có lỗi xảy ra')
-                }
-                alert('Đăng ký thành công, hãy chờ admin duyệt tài khoản của bạn')
-            });
+    _addNewSchool = () => {
+        this.setState({
+            addNewSchool: !this.state.addNewSchool,
+        })
     }
 
-    _changeState = (changedState) => this.setState(changedState)
-
-    decodeFirebaseArray = (arr, id_name) => {
-        if (!arr || Array.isArray(arr)) return arr;
-        return Object.keys(arr).map(function (key) {
-            arr[key]['$' + id_name] = key;
-            return arr[key];
-        });
-    }
-
-    removeTempKeys = (obj) => {
-        var nObj = Object.assign({}, obj);
-        Object.keys(nObj).forEach(function (key) {
-            if (key.startsWith('$')) delete nObj[key];
-        });
-        return nObj;
-    }
-
-    renderApp = () => {
-        const {appState} = this.state
-        const combinedProps = {
-            ...this.props,
-            ...this.state,
-        }
-        if (appState === 'loading') return <p>loading</p>
-        if (appState === 'init') return <Init/>
-        if (appState === 'register') return <Register {...combinedProps}/>
-        if (appState === 'supporter') return <Supporter {...combinedProps}/>
-        if (appState === 'admin') return <Admin {...combinedProps}/>
-        return null
+    editSchool = (key, school) => () => {
+        if (!key || !school) return this.setState({
+            editSchool: null
+        })
+        this.setState({
+            editSchool: {
+                key, school
+            }
+        })
     }
 
     render() {
+        const { school, selectedSchool, addNewSchool, messages, editSchool } = this.state
 
         return (
-            <AppContext.Provider
-                value={{
-                    app: this.state,
-                    changeState: this._changeState,
-                    register: this._register,
-                    removeTempKeys: this.removeTempKeys,
-                    decodeFirebaseArray: this.decodeFirebaseArray,
-                    DB_PREFIX,
-                }}
-            >
-                {this.renderApp()}
-            </AppContext.Provider>
+            <div className="Admin">
+                <AppBar position="static">
+                    <Toolbar>
+                        <Typography variant="h6" color="inherit">SCS - Admin</Typography>
+                    </Toolbar>
+                </AppBar>
+                <div className={'container mt-3'}>
+
+                    <Button variant="contained" color="primary" onClick={this._addNewSchool}>
+                        Thêm trường
+                    </Button>
+                    <br />
+                    <TextField
+                        id="outlined-name"
+                        label="Tìm kiếm theo tên trường"
+                        margin="normal"
+                        variant='outlined'
+                        fullWidth
+                        value={this.state.search}
+                        onChange={(e) => {
+                            const { value } = e.target
+                            this.setState({ search: value })
+                        }}
+                    />
+                    <NewSchool
+                        open={addNewSchool}
+                        toggle={this._addNewSchool}
+                        school={school}
+                        {...this.props}
+                    />
+                    <EditSchool
+                        open={editSchool}
+                        toggle={this.editSchool()}
+                        school={school}
+                        {...this.props}
+                    />
+                    {selectedSchool ? <div className={'card mt-3'}>
+                        <div className={'card-header'}>
+
+                            <div className="d-flex justify-content-between">
+                                <Button>
+                                    {school[selectedSchool].name}
+                                </Button>
+                                <Button onClick={() => this.setState({
+                                    selectedSchool: null,
+                                })}>
+                                    Quay lại
+                                </Button>
+                            </div>
+                        </div>
+                        <div className={'card-body'}>
+                            <div className="text-muted">Quản lý danh sách tư vấn viên</div>
+                            <ListSupporters school={selectedSchool} />
+                        </div>
+                    </div> : messages ? <div className={'card mt-3'}>
+                        <div className={'card-header'}>
+
+                            <div className="d-flex justify-content-between">
+                                <Button>
+                                    {school[messages].name}
+                                </Button>
+                                <Button onClick={() => this.setState({
+                                    messages: null,
+                                })}>
+                                    Quay lại
+                                </Button>
+
+                            </div>
+                        </div>
+                        <div className={'card-body'}>
+                            <Messages school={messages} />
+                        </div>
+                    </div> : <div className='row'>
+                        {Object.keys(school).filter(s => {
+                            const sc = school[s]
+                            return xoa_dau(sc.name.toLowerCase()).includes(xoa_dau(this.state.search.toLocaleLowerCase()))
+                        }).map((s, i) => <div className='col-12 col-md-6 col-lg-6 col-xl-6' key={i}><div className={'card card-body mt-3 Card'}>
+                                    <span
+                                        onClick={this.clickSchool(s)}
+                                        className={'Cursor'}
+                                    >
+                                        {school[s].name}
+                                    </span>
+                            <Button
+                                onClick={this.clickAllMessages(s)}
+                            >
+                                Xem tin nhắn
+                            </Button>
+                            <Button
+                                onClick={this.clickSchool(s)}
+                            >
+                                Quản lý tư vấn viên
+                            </Button>
+                            <Button
+                                onClick={this.editSchool(s, school[s])}
+                            >
+                                Sửa thông tin trường
+                            </Button>
+                        </div>
+                        </div>)}
+                    </div>}
+                </div>
+            </div>
         )
     }
 }
 
-App.propTypes = {
-    classes: PropTypes.object.isRequired,
+export default function (props) {
+    return (
+        <AppContext.Consumer>
+            {(app) => <Admin
+                {...{
+                    ...app,
+                    ...props,
+                }}
+            />}
+        </AppContext.Consumer>
+    )
 }
-
-export default withStyles(styles)(App)
