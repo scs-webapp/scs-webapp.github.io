@@ -44,12 +44,22 @@ class Register extends Component {
 
     render() {
         const {form, loading} = this.state
+        var blockMsg = {
+            display: this.props.isLocked ? "flex" : "none"
+        }
+
+        var regForm = {
+            display: this.props.isLocked ? "none" : "flex"
+        }
 
         return (
             <div className="Register">
                 <div className="container">
-                    <div className="card card-body Card">
-                        <small className={'text-muted'}>Trước tiên, bạn phải đăng ký thông tin tài khoản trước</small>
+                    <div className="card card-body Card" style={blockMsg}>
+                        Tài khoản của bạn chưa được kích hoạt.<br/>Bạn hãy đợi thêm hoặc thông báo với admin nhé!
+                    </div>
+                    <div className="card card-body Card" style={regForm}>
+                        <small className={'text-muted'}>Trước tiên, bạn phải đăng ký thông tin tài khoản trước</small><br/>
                         <label htmlFor={'email'}>Email</label>
                         <input
                             className={'form-control'}
@@ -81,13 +91,6 @@ class Register extends Component {
                                 {this.props.groups[g].name}
                             </option>)}
                         </select>
-                        {/*<input*/}
-                            {/*className={'form-control'}*/}
-                            {/*value={form.group}*/}
-                            {/*id={'group'}*/}
-                            {/*onChange={this._onChangeInput('group')}*/}
-                            {/*autoComplete={'off'}*/}
-                        {/*/>*/}
                         <label htmlFor={'desc'}>Lời chào</label>
                         <input
                             className={'form-control'}
